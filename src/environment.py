@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import random
+import src.vistools as vis
 
 class Env(object):
 
@@ -10,6 +11,7 @@ class Env(object):
         self.boxes = []
         self.obstacles = []
         self.agent = None
+        self.trees = []
 
     def add_box(self, box):
         self.boxes.append(box)
@@ -23,38 +25,65 @@ class Env(object):
     def add_agent(self, agent):
         self.agent = agent
 
+    def add_tree(self, tree):
+        self.trees.append(tree)
+
+    def collides_with(self, point, path=False):
+
+        if path:
+            # do stuff with path
+            pass
+
+        for static in self.statics:
+            if static.collides_with(point):
+                return True
+
+
     def sample(self):
-        return random.random(), random.random()
+
+        # set the clearance so that you can wedge your thumb between a box centred at sample point and world edge [0, 1]
+        clearance = self.boxes[0].width/1.6
+
+        while True:
+            # Generate candidate with clearance
+            candidate = (random.random() * (1 - 2 * clearance) + clearance,
+                         random.random() * (1 - 2 * clearance) + clearance)
+
+            if not self.collides_with(candidate):
+                return candidate
+
 
     def show(self, dimms):
         canvas = np.ones(dimms, dtype=np.uint8) * 255
 
         for box in range(0, len(self.boxes)):
-            tl = self.boxes[box].get_tl(dimms[0])
-            br = self.boxes[box].get_br(dimms[0])
-            goal = self.boxes[box].get_goal(dimms[0])
-            if dimms[0] != 1:
-                tl = (int(tl[0]), int(tl[1]))
-                br = (int(br[0]), int(br[1]))
-                goal = (int(goal[0]), int(goal[1]))
-            canvas = cv2.rectangle(canvas, tl, br, [255, 0, 0], -1)
-            canvas = cv2.circle(canvas, goal, 30, [0, 0, 255], -1)
+            canvas = vis.plot_box(canvas, dimms, [[255, 0, 0], [0, 0, 255]],
+                                  self.boxes[box].get_tl(dimms[0]),
+                                  self.boxes[box].get_br(dimms[0]),
+                                  goal=self.boxes[box].get_goal(dimms[0]))
 
         for box in range(0, len(self.obstacles)):
-            tl = self.obstacles[box].get_tl(dimms[0])
-            br = self.obstacles[box].get_br(dimms[0])
-            if dimms[0] != 1:
-                tl = (int(tl[0]), int(tl[1]))
-                br = (int(br[0]), int(br[1]))
-            canvas = cv2.rectangle(canvas, tl, br, [0, 0, 0], -1)
+            canvas = vis.plot_box(canvas, dimms, [[255, 0, 0], [0, 0, 255]],
+                                  self.obstacles[box].get_tl(dimms[0]),
+                                  self.obstacles[box].get_br(dimms[0]),
+                                  obstacle=True)
 
         for box in range(0, len(self.statics)):
-            tl = self.statics[box].get_tl(dimms[0])
-            br = self.statics[box].get_br(dimms[0])
-            if dimms[0] != 1:
-                tl = (int(tl[0]), int(tl[1]))
-                br = (int(br[0]), int(br[1]))
-            canvas = cv2.rectangle(canvas, tl, br, [0, 0, 0], -1)
+            canvas = vis.plot_box(canvas, dimms, [[0, 0, 0], [0, 0, 0]],
+                                  self.statics[box].get_tl(dimms[0]),
+                                  self.statics[box].get_br(dimms[0]))
+
+        for tree in range(0, len(self.trees)):
+            for node in iter(self.trees[0]):
+
+                # Plot node position
+                canvas = vis.plot_sample(canvas, node.start, (1000, 1000, 3))
+
+                # plot line to children
+                for child in node.children:
+                    canvas = cv2.line(canvas,
+                                      (int(node.start[0] * 1000), int(node.start[1] * 1000)),
+                                      (int(child.start[0] * 1000), int(child.start[1] * 1000)), [0, 0, 0], 2)
 
         return canvas
 
@@ -64,6 +93,10 @@ class Prism(object):
         self.width = width
         self.height = height
         self.centre = centre
+        self.xMin = centre[0] - width / 2
+        self.xMax = centre[0] + width / 2
+        self.yMin = centre[1] - width / 2
+        self.yMax = centre[1] + width / 2
 
     def get_tl(self, scale):
         return (self.centre[0] - self.width/2) * scale, (self.centre[1] - self.width/2) * scale
@@ -76,6 +109,9 @@ class Prism(object):
 
     def get_br(self, scale):
         return (self.centre[0] + self.width/2) * scale, (self.centre[1] + self.height/2) * scale
+
+    def collides_with(self, point):
+        return point[0] > self.xMin and point[0] < self.xMax and point[1] > self.yMin and point[1] < self.yMax
 
 
 class Moving(Prism):

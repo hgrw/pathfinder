@@ -3,16 +3,24 @@ from builtins import map
 import math
 import random
 import cv2
+import src.vistools as vis
+from .heapdict import heapdict
+import math
 
 class Node(object):
-    def __init__(self, distance, x, y):
-        self.distance = distance
-        self.x = x
-        self.y = y
+
+    def __init__(self, start, goal, cost):
+        self.distance = math.hypot(goal[0] - start[0], goal[1] - start[1])
+        self.cost = cost
+        self.totalCost = self.distance + cost
+        self.start = start  # Node position
+        self.goal = goal    # Goal position
+        self.id = id(self)  # Unique identifier for class instance
         self.children = []
+        self.parent = None
+        self.done = False   # Only true for goal node
 
     def __iter__(self):
-        "implement the iterator protocol"
         for v in chain(*map(iter, self.children)):
             yield v
         yield self
@@ -21,60 +29,66 @@ class Node(object):
         self.children.append(obj)
 
 
+def expand_tree(node):
+
+    pathReversed = []
+    pathReversed.append(node.start)
+    while node.parent is not None:
+        pathReversed.append(node.parent.start)
+        node = node.parent
+
+    return pathReversed
+
 def sign(x):
     return (1 - (x <= 0))*2 - 1
 
 
-def generate_node(parent, sample, stepSize, boxEnd, plot=False):
+def generate_node(parent, sample, stepSize):
 
-    deltaX = parent[0] - sample[0]
-    deltaY = parent[1] - sample[1]
+    deltaX = sample[0] - parent.start[0]
+    deltaY = sample[1] - parent.start[1]
 
-    if abs(deltaX) < abs(deltaY):   # Generate new sample on x axis
-        newX = parent[0] + stepSize * random.random() * sign(deltaX)
-        update = Node(math.hypot(newX - boxEnd[0], parent[1] - boxEnd[1]), newX, parent[1])
+    if abs(deltaX) > abs(deltaY):   # Generate new sample on X or Y axis of parent node. Randomise new edge length.
+        newX = parent.start[0] + stepSize * sign(deltaX) * random.random()
+        update = Node((newX, parent.start[1]), parent.goal, parent.cost + newX - parent.start[0])
     else:
-        newY = parent[1] + stepSize * random.random() * sign(deltaY)
-        update = Node(math.hypot(parent[0] - boxEnd[0], newY - boxEnd[1]), parent[0], newY)
+        newY = parent.start[1] + stepSize * sign(deltaY) * random.random()
+        update = Node((parent.start[0], newY), parent.goal, parent.cost + newY - parent.start[0])
 
-    if plot.any():
-        # cv2.imshow('environment', plot)
-        # cv2.waitKey(0)
-        point = (int(update.x*1000), int(update.y*1000))
-        #print(point)
-        cv2.imshow('environment', cv2.circle(cv2.circle(plot, point, 5, [120, 0, 100], -1),
-                                             (int(sample[0] * 1000), int(sample[1] * 1000)),
-                                             5, [120, 185, 100], -1))
-        cv2.waitKey(0)
+    update.parent = parent
     return update
 
 
-def generate_path(env, boxStart, boxEnd, stepSize):
+def generate_path(env, startNode, endNode, stepSize, plot=False):
+
+    # Store euclidean distance heuristic in root node
+    env.add_tree(Node(startNode, endNode, 0))
 
     while True:
 
-        # Store euclidean distance heuristic in root node
-        root = Node(math.hypot(boxEnd[0] - boxStart[0], boxEnd[1] - boxStart[1]), boxStart[0], boxStart[1])
-
         # Generate valid sample while candidate point not in collision with world
-        samplePoint = env.sample()    # just get any point for now
+        samplePoint = env.sample()
 
+        if plot:
+            cv2.imshow('environment', vis.plot_sample(env.show((1000, 1000, 3)), samplePoint, (1000, 1000, 3)))
+            cv2.waitKey(1)
         # Select closest node to sample point by iterating through nodes
         closestNode = 1
-        for node in iter(root):
-            sampleDistance = math.hypot(samplePoint[0] - node.x, samplePoint[1] - node.y)
+        for node in iter(env.trees[0]):
+            sampleDistance = math.hypot(samplePoint[0] - node.start[0], samplePoint[1] - node.start[1])
             if sampleDistance <= closestNode:
                 closestNode = sampleDistance
 
         # And then update node with sample point at position
-        for node in iter(root):
-            if math.hypot(samplePoint[0] - node.x, samplePoint[1] - node.y) == closestNode: # add child
-                node.add_child(generate_node((node.x, node.y),
-                                             samplePoint,
-                                             stepSize,
-                                             boxEnd,
-                                             env.show((1000, 1000, 3))))
+        for node in iter(env.trees[0]):
+            sampleDistance = math.hypot(samplePoint[0] - node.start[0], samplePoint[1] - node.start[1])
+            if sampleDistance == closestNode: # add child
+
+                newNode = generate_node(node, samplePoint, stepSize)
+
+                if not env.collides_with(newNode.start):
+                    node.add_child(newNode)
 
             # Check for win condition
             if node.distance <= stepSize:
-                return root
+                return expand_tree(node)
