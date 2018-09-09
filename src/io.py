@@ -1,4 +1,5 @@
-from .environment import Agent, Env, Moving, Prism
+from .environment import Env, Moving, Prism
+from .agent import Agent
 
 
 def initialise_environment(text):
