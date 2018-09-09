@@ -15,19 +15,13 @@ from src.environment import Env, Prism, Moving
 """
 
 1. Generate paths for each movable box, ignoring movable obstacles and other movable boxes.
-2. Modify paths to include sub-path for robot to change push-location on movable boxes.
-3. Identify regions where paths intersect. For each intersection, either
-- redraw paths; or
-- identify order-of-execution that works (neither of these solutions are that great tbh...surely there's a better way)
-4. Identify free space for movable obstacles, hence generate goal locations.
-5. Generate paths for getting movable obstacles to goal locations.
-6. Modify paths to include sub-path for robot to change push-location on movable obstacles.
-7. Identify regions where movable obstacle paths intersect and fix as per moving boxes (redraw or identify order-of-execution).
-8. Generate path for robot to go to start location for moving obstacles.
-9. Generate path for robot to go from end of each moving obstacle path to start of next moving obstacle path.
-10. Generate path for robot to go from final moving obstacle goal location to start of first moving box path.
-11. Generate path for robot to go from end of each moving box path to start of next moving box path.
-12. Done 
+2. Identify free space for movable obstacles and generate associated goal locations.
+3. Generate paths for getting movable obstacles to goal locations.
+4. Modify paths to include robot subroutines at corners
+5. Generate path for robot to go to start location to moving obstacles.
+6. Generate path order-of-execution
+7. Generate path for robot to go from end of each box path to start of next moving box path.
+
 
 """
 
@@ -45,20 +39,34 @@ def main(input, output, demo=False):
         env.agent.add_box_path(
             tree.generate_path(env, env.boxes[box].centre, env.boxes[box].goal, stepSize, boxClearance, plot=demo))
 
+    # 2. Identify free space for movable obstacles and generate associated goal locations.
     for box in range(0, len(env.obstacles)):
 
-        # Add goal location for movable obstacle based on paths in agent.
-        # remember, need to ensure that obstacle goals don't intersect!
-        env.obstacles[box].add_goal(agent.generate_goal(env))
-        env.agent.add_obst_path(
-            tree.generate_path(env,
-                               env.obstacles[box].centre,
-                               env.obstacles[box].obstacleGoal,
-                               stepSize, boxClearance, plot=demo))
+        # If obstacle lay on path for any box,
+        if agent.box_intersect_path(env.agent.boxPaths, env.obstacles[box]):
+
+            # Add goal location for obstacle
+            env.obstacles[box].add_goal(agent.generate_goal(env))
+
+            # 3. Generate paths for getting movable obstacles to goal locations.
+            env.agent.add_obst_path(
+                tree.generate_path(env,
+                                   env.obstacles[box].centre,
+                                   env.obstacles[box].obstacleGoal,
+                                   stepSize, boxClearance, plot=demo))
+
+    # 4. Modify paths to include robot subroutines at corners
+    env.agent.boxPaths = env.agent.update_paths(env.agent.boxPaths)
+    env.agent.obstPaths = env.agent.update_paths(env.agent.obstPaths)
+
+    # 5. Generate path for robot to go to start location to moving obstacles.
 
 
-    # 2. Modify path to include sub-path for robot to change push-location on movable boxes.
-    #path = agent.augment_path(env, path)
+    # 6. Generate path order-of-execution
+
+
+    # 7. Generate path for robot to go from end of each box path to start of next moving box path.
+
 
 
 if __name__ == '__main__':

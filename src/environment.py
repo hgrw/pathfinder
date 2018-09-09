@@ -13,6 +13,7 @@ class Env(object):
         self.obstacles = []
         self.agent = None
         self.trees = {}
+        self.primitive = 0.001
 
     def add_box(self, box):
         self.boxes.append(box)
@@ -115,6 +116,13 @@ class Prism(object):
 
     def get_br(self, scale):
         return (self.centre[0] + self.width/2) * scale, (self.centre[1] + self.height/2) * scale
+
+    def collides_with_box(self, box):
+        if (self.xMin < box.xMin < self.xMax or self.xMin < box.xMax < self.xMax) and \
+                (self.yMin < box.yMin < self.yMax or self.yMin < box.yMax < self.yMax):
+            return True
+        else:
+            return False
 
     def collides_with_point(self, point):
         return point[0] > self.xMin and point[0] < self.xMax and point[1] > self.yMin and point[1] < self.yMax

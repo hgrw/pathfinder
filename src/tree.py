@@ -57,6 +57,28 @@ def generate_node(parent, sample, stepSize):
     return update
 
 
+def check_node_against_goals(env, pos, currentGoal):
+
+    for box in env.boxes:
+
+        # only check other box-goals
+        if box.goal[0] != currentGoal[0] and box.goal[1] != currentGoal[1]:
+            if Prism(box.width, box.height, pos).collides_with_box(Prism(box.width, box.height, box.goal)):
+                return False
+
+    for box in env.obstacles:
+
+        # Don't do anything for obstacles that don't have goals
+        if box.obstacleGoal:
+
+            # only check other box-goals
+            if box.obstacleGoal[0] != currentGoal[0] and box.obstacleGoal[1] != currentGoal[1]:
+                if Prism(box.width, box.height, pos).collides_with_box(Prism(box.width, box.height, box.obstacleGoal)):
+                    return False
+
+    return True
+
+
 def generate_path(env, startNode, endNode, stepSize, boxClearance, plot=False):
 
     # Store euclidean distance heuristic in root node
@@ -87,9 +109,13 @@ def generate_path(env, startNode, endNode, stepSize, boxClearance, plot=False):
 
                 newNode = generate_node(node, samplePoint, stepSize)
 
+                # Ensure that new node doesn't intersect with static objects
                 if not env.collides_with_box(
                         Prism(env.boxes[0].width * boxClearance, env.boxes[0].height * boxClearance, newNode.start)):
-                    node.add_child(newNode)
+
+                    # Ensure that new node doesn't intersect with any known goal location
+                    if check_node_against_goals(env, samplePoint, endNode):
+                        node.add_child(newNode)
 
             # Check for win condition
             if node.distance <= stepSize:
