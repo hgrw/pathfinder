@@ -5,6 +5,7 @@ import random
 import cv2
 import src.vistools as vis
 import src.utils as utils
+import src.agent as agent
 from .environment import Prism
 import math
 
@@ -18,6 +19,8 @@ class Node(object):
         self.goal = goal    # Goal position
         self.id = id(self)  # Unique identifier for class instance
         self.children = []
+        self.root = None
+        self.theta = None
         self.parent = None
         self.done = False   # Only true for goal node
 
@@ -33,28 +36,60 @@ class Node(object):
 def expand_tree(node):
 
     pathReversed = []
-    pathReversed.append(node.start)
+    pathReversed.append([node.start, (0, 0)])
     while node.parent is not None:
-        pathReversed.append(node.parent.start)
+        pathReversed.append([node.parent.start, node.theta])
         node = node.parent
 
     return pathReversed
 
 
-def generate_node(parent, sample, stepSize):
+def generate_node(env, parent, sample, stepSize, clearance, startIgnore=None, endIgnore=None, fin=False, robot=False):
 
     deltaX = sample[0] - parent.start[0]
     deltaY = sample[1] - parent.start[1]
 
     if abs(deltaX) > abs(deltaY):   # Generate new sample on X or Y axis of parent node. Randomise new edge length.
-        newX = parent.start[0] + stepSize * utils.sign(deltaX) * random.random()
-        update = Node((newX, parent.start[1]), parent.goal, parent.cost + newX - parent.start[0])
-    else:
-        newY = parent.start[1] + stepSize * utils.sign(deltaY) * random.random()
-        update = Node((parent.start[0], newY), parent.goal, parent.cost + newY - parent.start[0])
 
-    update.parent = parent
-    return update
+        if fin:
+            newX = parent.start[0] + deltaX
+            newY = parent.start[1]
+        else:
+            newX = parent.start[0] + stepSize * utils.sign(deltaX) * random.random()
+            newY = parent.start[1]
+    else:
+        if fin:
+            newY = parent.start[1] + deltaY
+            newX = parent.start[0]
+        else:
+            newY = parent.start[1] + stepSize * utils.sign(deltaY) * random.random()
+            newX = parent.start[0]
+
+    candidateBox = Prism(clearance, clearance, (newX, newY))
+    if not env.static_collision(candidateBox):
+        # if fin:
+        #     print(sample, 'point ', (newX, newY), ' did not collide with static, with clearance ', clearance)
+        #     cv2.waitKey(0)
+        # if clearance == 0.001:
+        #     print('ok')
+        if not env.box_collision(candidateBox, startIgnore, endIgnore, robot):
+            # if fin:
+            #     print(sample, 'point ', (newX, newY), ' did not collide with box, with clearance ', clearance)
+            #     cv2.waitKey(0)
+            if not env.goal_collision(candidateBox, parent.goal):
+                # if fin:
+                #
+                #     print(sample, '\t\tpoint ', (newX, newY), ' did not collide with goal, with clearance ', clearance)
+                #     cv2.waitKey(0)
+
+
+
+                update = Node((newX, newY), parent.goal, math.hypot(newX - parent.goal[0], newY - parent.goal[1]))
+                # update = Node((parent.start[0], newY), parent.goal, parent.cost + newY - parent.start[0])
+                # update = Node((newX, parent.start[1]), parent.goal, parent.cost + newX - parent.start[0])
+                update.parent = parent
+                return update
+    return None
 
 
 def check_node_against_goals(env, pos, currentGoal):
@@ -73,26 +108,35 @@ def check_node_against_goals(env, pos, currentGoal):
 
             # only check other box-goals
             if box.obstacleGoal[0] != currentGoal[0] and box.obstacleGoal[1] != currentGoal[1]:
-                if Prism(box.width, box.height, pos).collides_with_box(Prism(box.width, box.height, box.obstacleGoal)):
+                if Prism(box.width, box.height, pos).collides_with_box(
+                        Prism(box.width * 2.0, box.height * 2.0, box.obstacleGoal)):
                     return False
 
     return True
 
 
-def generate_path(env, startNode, endNode, stepSize, boxClearance, plot=False):
+def generate_path(env, startNode, endNode, stepSize, clearance, plot=False, robot=False):
+
+    print("generating path for robot: ", robot, len(env.agent.finalPath))
+    cleanCanvas = env.canvas.copy()
+    env.update_canvas()
 
     # Store euclidean distance heuristic in root node
     newTree = Node(startNode, endNode, 0)
+    newTree.root = startNode
     env.add_tree(newTree)
+    finalPoint = False
 
     while True:
-        # Generate valid sample while candidate point not in collision with world
-        samplePoint = env.sample()
 
+        if finalPoint:
+            pass
+        else:
+            # Generate valid sample while candidate point not in collision with world
+            samplePoint = env.sample()
         if plot:
-            canvas = vis.plot_sample(env.show((1000, 1000, 3), treeID=id(newTree)), samplePoint, (1000, 1000, 3))
-            cv2.imshow(
-                'environment', canvas)
+            canvas = env.show(id(newTree))
+            cv2.imshow('environment', vis.plot_sample(canvas.copy(), samplePoint))
             cv2.waitKey(1)
 
         # Select closest node to sample point by iterating through nodes
@@ -105,29 +149,24 @@ def generate_path(env, startNode, endNode, stepSize, boxClearance, plot=False):
         # And then update node with sample point at position
         for node in iter(newTree):
             sampleDistance = math.hypot(samplePoint[0] - node.start[0], samplePoint[1] - node.start[1])
-            if sampleDistance == closestNode: # add child
+            if sampleDistance == closestNode:   # add child
+                newNode = generate_node(env, node, samplePoint, stepSize, clearance, startNode, endNode, finalPoint, robot)
 
-                newNode = generate_node(node, samplePoint, stepSize)
+                if newNode is not None:
+                    newNode.theta = utils.dist_to_static(env.statics, samplePoint, env.agent.width)
+                    node.add_child(newNode)
+                    newNode.root = node.root
 
-                # Ensure that new node doesn't intersect with static objects
-                if not env.collides_with_box(
-                        Prism(env.boxes[0].width * boxClearance, env.boxes[0].height * boxClearance, newNode.start)):
-
-                    # Ensure that new node doesn't intersect with any known goal location
-                    if check_node_against_goals(env, samplePoint, endNode):
-                        node.add_child(newNode)
+                if node.distance <= stepSize:
+                    finalPoint = True
+                    samplePoint = node.goal
 
             # Check for win condition
-            if node.distance <= stepSize:
+            if node.distance == 0:
                 path = expand_tree(node)
-
-                # Plot path in red
                 if plot:
-                    for point in range(1, len(path)):
-                        cv2.imshow('environment',
-                                   cv2.line(canvas,
-                                            (int(path[point - 1][0] * 1000), int(path[point - 1][1] * 1000)),
-                                            (int(path[point][0] * 1000), int(path[point][1] * 1000)), [0, 0, 255], 2))
-                    cv2.waitKey(0)
-
+                    env.update_canvas()
+                    cv2.imshow('environment', env.canvas)
+                    #cv2.waitKey(0)
+                env.canvas = cleanCanvas
                 return path
