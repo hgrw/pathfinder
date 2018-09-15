@@ -165,8 +165,8 @@ class Env(object):
 
         intersect = []
         for box in boxes:
+            # print("INTERSECT BOX: ", box.centre)
             if box.collides_with_line(line[0], line[1]):
-                print(line[0], line[1])
                 intersect.append(utils.get_intersect(box.get_tl(), box.get_tr(), line[0], line[1]))
                 intersect.append(utils.get_intersect(box.get_tr(), box.get_br(), line[0], line[1]))
                 intersect.append(utils.get_intersect(box.get_br(), box.get_bl(), line[0], line[1]))
@@ -248,6 +248,7 @@ class Env(object):
             return samplePoint
 
     def update_canvas(self):
+        self.canvas = np.ones((1000, 1000, 3), dtype=np.uint8) * 255
 
         for box in range(0, len(self.boxes)):
             self.canvas = vis.plot_box(self.canvas, [[255, 0, 0], [0, 0, 255]],

@@ -22,12 +22,14 @@ class Agent(object):
     #     self.obstPaths.append(path)
     def update_paths(self, env):
 
-        canvas = env.canvas.copy()
         newPaths = []
         deleteMode = 1
+        breakVertex = None
 
         # Get each path segment
         for pathPos in range(1, len(self.finalPath)):
+            canvas = env.canvas.copy()
+
             dummy = []
 
             # Reverse path segment
@@ -36,39 +38,67 @@ class Agent(object):
                 path = dummy
 
             # Get each vertex in reversed path segment
-            for vertex in range(1, len(path)):
 
+            dummyPath = []
+            for vertex in range(1, len(path)):
+                # print('vertex = ', vertex)
+                # print('pathPos = ', pathPos)
                 line = [path[vertex - 1][0], path[vertex][0]]
+                # print("CHECKING FOR INTESECT ON LINE: ", line)
+                # print('vertex = ', vertex)
+                # print('pathPos = ', pathPos)
+                # print('deleteMode = ', deleteMode)
+                # cv2.imshow('environment',
+                #            cv2.line(canvas, utils.scale(line[0]), utils.scale(line[1]), [100, 100, 100], 2))
+                # cv2.waitKey(0)
 
                 if pathPos == 1:    # Ignore intersection at starting vertex
                     intersection = env.box_intersection(line, [Prism(env.boxes[0].width, env.boxes[0].height, path[-1][0])])
+
                 else:
                     intersection = env.box_intersection(line, [Prism(env.boxes[0].width, env.boxes[0].height, path[-1][0]),
                                                                Prism(env.boxes[0].width, env.boxes[0].height, path[0][0])])
+                if intersection is not None:
+                    print('INTERSECT: ', intersection)
 
                 # If we're a robot path,
                 # stop adding vertices and instead complete path using subroutine for angling to next position
                 if intersection is not None and path[vertex][1]:
-                    # print("path ", path)
-                    # cv2.imshow('environment', cv2.circle(canvas, utils.scale(intersection), 3, [0, 0, 0], -1))
-                    # cv2.waitKey(0)
-
                     if deleteMode % 2:  # Delete after
-                        path = path[:vertex - 1]
-                        path.append([intersection, 'MOVE'])
+                        #
+                        # print("DELETING AFTER INTERSECT: ", intersection, vertex)
+
+                        if len(dummyPath) > 1:
+                            dummyPath = dummyPath[:vertex - 1]
+                        else:
+                            dummyPath = path[:vertex]
+                        dummyPath.append([intersection, 'MOVE'])
+                        deleteMode += 1
 
                     else:               # Delete before
-                        path = [[intersection, 'MOVE']] + path[vertex:]
+                        # print("DELETING BEFORE INTERSECT ", intersection, vertex)
+                        # print("DUMMY PATH BEFORE: ", dummyPath)
+                        dummyPath = [[intersection, 'MOVE']] + path[vertex:]
+                        # print("DUMMY PATH AFTER: ", dummyPath)
+                        deleteMode += 1
+            # print('PRINTING PATH: ', dummyPath)
+            # cv2.waitKey(0)
+            for point in dummyPath:
+                cv2.imshow('environment', cv2.circle(canvas, utils.scale(point[0]), 3, [0, 0, 0], -1))
+            cv2.waitKey(0)
+            if len(dummyPath) > 1:
+                newPaths.append(dummyPath)
+            else:
+                newPaths.append(path)
+        dummy = []
 
-                    # print('path ', path)
-                    # cv2.waitKey(0)
-                    deleteMode += 1
-
-                    break
-            newPaths.append(path)
-
-        print(self.finalPath)
-        print(newPaths)
+        # Reverse path segment
+        for vert in reversed(self.finalPath[-1]):
+            dummy.append(vert)
+            path = dummy
+        newPaths.append(path)
+        # print(self.finalPath)
+        # print(newPaths)
         self.finalPath = newPaths
 
 

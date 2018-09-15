@@ -112,12 +112,13 @@ def main(input, output, demo=False, debug=False):
 
     # Add inputs and outputs for each path in agent paths!
     env.agent.update_paths(env)
-    cv2.imshow('environment', env.canvas)
-    cv2.waitKey(0)
 
     for path in env.agent.finalPath:
         env.agent.timeseries.append(env.agent.extrapolate_path(env, path))
 
+    env.update_canvas()
+    cv2.imshow('environment', env.canvas)
+    cv2.waitKey(0)
     # 5. Generate paths between movable boxes
     currentPos = env.trees[env.treeIDs[-2]].goal
 
