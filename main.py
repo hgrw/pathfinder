@@ -29,6 +29,7 @@ def main(input, output, demo=False, debug=False):
 
     env = io.initialise_environment(input)
     env.update_boxes()
+    debug=False
 
     # Clearance parameters
     robotClearance = env.primitive
@@ -64,7 +65,7 @@ def main(input, output, demo=False, debug=False):
                            (env.agent.x, env.agent.y),
                            env.obstacles[0].start,
                            stepSize, robotClearance,
-                           plot=debug))
+                           plot=debug, robot=True))
 
     # 5. If there are more than one obstacle, generate path between goal of preceeding obstacle to start of next
     for obs in range(1, len(env.obstacles)):
@@ -108,8 +109,14 @@ def main(input, output, demo=False, debug=False):
         env.agent.finalPath.append(env.boxes[-1].path)
 
     env.update_canvas()
+
+    # Add inputs and outputs for each path in agent paths!
+    env.agent.update_paths(env)
     cv2.imshow('environment', env.canvas)
     cv2.waitKey(0)
+
+    for path in env.agent.finalPath:
+        env.agent.timeseries.append(env.agent.extrapolate_path(env, path))
 
     # 5. Generate paths between movable boxes
     currentPos = env.trees[env.treeIDs[-2]].goal

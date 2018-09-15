@@ -1,5 +1,8 @@
 from .environment import Env, Prism
 import src.utils as utils
+import src.vistools as vis
+import cv2
+import math
 import random
 
 class Agent(object):
@@ -10,12 +13,84 @@ class Agent(object):
         self.y = y
         self.theta = theta
         self.finalPath = []
+        self.timeseries = []
 
     # def add_box_path(self, path):
     #     self.boxPaths.append(path)
 
     # def add_obst_path(self, path):
     #     self.obstPaths.append(path)
+    def update_paths(self, env):
+
+        canvas = env.canvas.copy()
+        newPaths = []
+        deleteMode = 1
+
+        # Get each path segment
+        for pathPos in range(1, len(self.finalPath)):
+            dummy = []
+
+            # Reverse path segment
+            for vert in reversed(self.finalPath[pathPos - 1]):
+                dummy.append(vert)
+                path = dummy
+
+            # Get each vertex in reversed path segment
+            for vertex in range(1, len(path)):
+
+                line = [path[vertex - 1][0], path[vertex][0]]
+
+                if pathPos == 1:    # Ignore intersection at starting vertex
+                    intersection = env.box_intersection(line, [Prism(env.boxes[0].width, env.boxes[0].height, path[-1][0])])
+                else:
+                    intersection = env.box_intersection(line, [Prism(env.boxes[0].width, env.boxes[0].height, path[-1][0]),
+                                                               Prism(env.boxes[0].width, env.boxes[0].height, path[0][0])])
+
+                # If we're a robot path,
+                # stop adding vertices and instead complete path using subroutine for angling to next position
+                if intersection is not None and path[vertex][1]:
+                    # print("path ", path)
+                    # cv2.imshow('environment', cv2.circle(canvas, utils.scale(intersection), 3, [0, 0, 0], -1))
+                    # cv2.waitKey(0)
+
+                    if deleteMode % 2:  # Delete after
+                        path = path[:vertex - 1]
+                        path.append([intersection, 'MOVE'])
+
+                    else:               # Delete before
+                        path = [[intersection, 'MOVE']] + path[vertex:]
+
+                    # print('path ', path)
+                    # cv2.waitKey(0)
+                    deleteMode += 1
+
+                    break
+            newPaths.append(path)
+
+        print(self.finalPath)
+        print(newPaths)
+        self.finalPath = newPaths
+
+
+    def extrapolate_path(self, env, path):
+
+        for vertex in path:
+            vertex = [vertex[0], utils.vector_to_object(env.get_features(), vertex[0])]
+            vertex[1][1] = vertex[1][1] + math.pi / 2
+            self.timeseries.append(vertex)
+
+            pt1, pt2 = utils.robot_line(self.width, vertex)
+            cv2.imshow('environment', cv2.circle(cv2.line(env.canvas,
+                                                          (int(pt1[0] * 1000), int(pt1[1] * 1000)),
+                                                          (int(pt2[0] * 1000), int(pt2[1] * 1000)), [0, 0, 0], 2),
+                                                 (int(vertex[0][0] * 1000), int(vertex[0][1] * 1000)), 5, [0, 0, 0],
+                                                 -1))
+            cv2.waitKey(0)
+
+        #vis.animate_path(env.agent, env.canvas.copy(), path)
+        # cv2.imshow('environment', env.canvas)
+        # cv2.waitKey(0)
+
 
 
 def box_intersect_path(paths, prism):

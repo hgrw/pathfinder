@@ -144,16 +144,52 @@ class Env(object):
                 return False
         return False
 
-    def box_collision_point(self, point):
+    def box_collision_point(self, point, getBox=False):
 
         for box in self.boxes:
             if box.collides_with_point(point):
-                return True
+                if getBox:
+                    return box.centre
+                else:
+                    return True
 
         for box in self.obstacles:
             if box.collides_with_point(point):
-                return True
+                if getBox:
+                    return box.centre
+                else:
+                    return True
         return False
+
+    def box_intersection(self, line, boxes):
+
+        intersect = []
+        for box in boxes:
+            if box.collides_with_line(line[0], line[1]):
+                print(line[0], line[1])
+                intersect.append(utils.get_intersect(box.get_tl(), box.get_tr(), line[0], line[1]))
+                intersect.append(utils.get_intersect(box.get_tr(), box.get_br(), line[0], line[1]))
+                intersect.append(utils.get_intersect(box.get_br(), box.get_bl(), line[0], line[1]))
+                intersect.append(utils.get_intersect(box.get_bl(), box.get_tl(), line[0], line[1]))
+
+        # for box in self.obstacles:
+        #     if box.collides_with_line(line[0], line[1]):
+        #         print(line[0], line[1])
+        #         intersect.append(utils.get_intersect(box.get_tl(), box.get_tr(), line[0], line[1]))
+        #         intersect.append(utils.get_intersect(box.get_tr(), box.get_br(), line[0], line[1]))
+        #         intersect.append(utils.get_intersect(box.get_br(), box.get_bl(), line[0], line[1]))
+        #         intersect.append(utils.get_intersect(box.get_bl(), box.get_tl(), line[0], line[1]))
+
+        if len(intersect) > 1:
+
+            # Strip out the two remaining points and remove the one that is furthest away from average of line segments
+            out = []
+            for point in intersect:
+                if point:
+                    out.append(point)
+            return utils.closest_point(out[0], out[1], ((line[0][0] + line[1][0]) / 2, (line[0][1] + line[1][1]) / 2))
+        else:
+            return None
 
     def goal_collision(self, candidateBox, ignoreGoal):
 
@@ -182,6 +218,24 @@ class Env(object):
         for static in self.statics:
             if static.collides_with_point(point):
                 return True
+
+    def get_features(self):
+        objects = []
+        for static in self.statics:
+            objects.append(static)
+
+        for box in self.boxes:
+            objects.append(box)
+            objects.append(Prism(box.width, box.height, box.goal))
+
+        for box in self.obstacles:
+            objects.append(box)
+            if box.obstacleGoal:
+                objects.append(Prism(box.width, box.height, box.obstacleGoal))
+
+        # add world edges
+        objects.append(Prism(1.0, 1.0, (0.5, 0.5)))
+        return objects
 
     def sample(self):
         # set the clearance so that you can wedge your thumb between a box centred at sample point and world edge [0, 1]

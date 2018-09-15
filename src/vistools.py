@@ -1,4 +1,5 @@
 import cv2
+import src.utils as utils
 
 def colours(i):
     colours = []
@@ -10,6 +11,20 @@ def colours(i):
     colours.append([255, 0, 170])
     colours.append([255, 0, 255])
     return colours[i]
+
+
+def animate_path(agent, canvas, path):
+
+    for vertex in path:
+        pt1, pt2 = utils.robot_line(agent.width, vertex)
+
+        # print(pt1, pt2)
+        # print((int(pt1[0] * 1000), int(pt1[1] * 1000)), (int(pt2[0] * 1000), int(pt2[1] * 1000)))
+        cv2.imshow('environment', cv2.circle(cv2.line(canvas,
+                                                      (int(pt1[0] * 1000), int(pt1[1] * 1000)),
+                                                      (int(pt2[0] * 1000), int(pt2[1] * 1000)), [0, 0, 0], 2),
+                                             (int(vertex[0][0] * 1000), int(vertex[0][1] * 1000)), 5, [0, 0, 0], -1))
+        cv2.waitKey(0)
 
 
 def plot_box(canvas, colours, tl, br, goal, path, obstacle=False):

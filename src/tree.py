@@ -36,7 +36,7 @@ class Node(object):
 def expand_tree(node):
 
     pathReversed = []
-    pathReversed.append([node.start, (0, 0)])
+    pathReversed.append([node.start, True])
     while node.parent is not None:
         pathReversed.append([node.parent.start, node.theta])
         node = node.parent
@@ -116,8 +116,8 @@ def check_node_against_goals(env, pos, currentGoal):
 
 
 def generate_path(env, startNode, endNode, stepSize, clearance, plot=False, robot=False):
-
-    print("generating path for robot: ", robot, len(env.agent.finalPath))
+    #
+    # print("generating path for robot: ", robot, len(env.agent.finalPath))
     cleanCanvas = env.canvas.copy()
     env.update_canvas()
 
@@ -153,7 +153,7 @@ def generate_path(env, startNode, endNode, stepSize, clearance, plot=False, robo
                 newNode = generate_node(env, node, samplePoint, stepSize, clearance, startNode, endNode, finalPoint, robot)
 
                 if newNode is not None:
-                    newNode.theta = utils.dist_to_static(env.statics, samplePoint, env.agent.width)
+                    newNode.theta = robot
                     node.add_child(newNode)
                     newNode.root = node.root
 
