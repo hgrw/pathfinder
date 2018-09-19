@@ -28,6 +28,7 @@ class Env(object):
         self.colours.append([255, 0, 170])
         self.colours.append([255, 0, 255])
         self.coloursIndex = 0
+        self.numRobotPaths = 0
 
     def update_boxes(self):
 

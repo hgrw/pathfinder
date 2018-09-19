@@ -1,5 +1,6 @@
 from .environment import Env, Prism
 import src.utils as utils
+import numpy as np
 import src.vistools as vis
 import cv2
 import math
@@ -15,112 +16,291 @@ class Agent(object):
         self.finalPath = []
         self.timeseries = []
 
-    # def add_box_path(self, path):
-    #     self.boxPaths.append(path)
+    def interpolate(self, env, prev, curr):
 
-    # def add_obst_path(self, path):
-    #     self.obstPaths.append(path)
-    def update_paths(self, env):
+        euclideanDistance = math.hypot(prev[0][0] - curr[0][0], prev[0][1] - curr[0][1])
+        radialDistance = abs(curr[1] % math.pi - prev[1] % math.pi) * env.agent.width / 2
+        out = []
 
-        newPaths = []
-        deleteMode = 1
-        breakVertex = None
+        print(abs(curr[1] % (math.pi / 2) - prev[1] % (math.pi / 2)), ' == ', abs(prev[1] % (math.pi / 2) - curr[1] % (math.pi / 2)))
 
-        # Get each path segment
-        for pathPos in range(1, len(self.finalPath)):
-            canvas = env.canvas.copy()
+        stepNum = int(max(euclideanDistance, radialDistance) / 0.001)
+        x = np.round(np.linspace(prev[0][0], curr[0][0], num=stepNum), decimals=3)
+        y = np.round(np.linspace(prev[0][1], curr[0][1], num=stepNum), decimals=3)
+        theta = np.round(np.linspace(prev[1] % math.pi, curr[1] % math.pi, num=stepNum), decimals=3)
+        for i in range(0, stepNum - 1):
+            out.append([(x[i], y[i]), theta[i], prev[2]])
 
-            dummy = []
+        return out
 
-            # Reverse path segment
-            for vert in reversed(self.finalPath[pathPos - 1]):
-                dummy.append(vert)
-                path = dummy
+    def move(self, env, current, currentFace, next, nextFace, box):
+        print("MOVING")
 
-            # Get each vertex in reversed path segment
+        if currentFace == nextFace:
+            nextNode = current
+            nextNode[0] = tuple(next)
+            return self.interpolate(env, current, nextNode)
 
-            dummyPath = []
-            for vertex in range(1, len(path)):
-                # print('vertex = ', vertex)
-                # print('pathPos = ', pathPos)
-                line = [path[vertex - 1][0], path[vertex][0]]
-                # print("CHECKING FOR INTESECT ON LINE: ", line)
-                # print('vertex = ', vertex)
-                # print('pathPos = ', pathPos)
-                # print('deleteMode = ', deleteMode)
-                # cv2.imshow('environment',
-                #            cv2.line(canvas, utils.scale(line[0]), utils.scale(line[1]), [100, 100, 100], 2))
-                # cv2.waitKey(0)
+        if currentFace == 't' and nextFace == 'b':
+            intermediate = []
+            nextNode = current.copy()
+            nextNode[0] = box.get_tl()
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[1] = current[1] + math.pi / 2
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[0] = box.get_bl()
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[1] = current[1] + math.pi / 2
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[0] = tuple(next)
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            return intermediate
+        if currentFace == 'b' and nextFace == 't':
+            intermediate = []
+            nextNode = current.copy()
+            nextNode[0] = box.get_br()
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[1] = current[1] + math.pi / 2
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[0] = box.get_tr()
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[1] = current[1] + math.pi / 2
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[0] = tuple(next)
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            return intermediate
+        if currentFace == 'l' and nextFace == 'r':
+            intermediate = []
+            nextNode = current.copy()
+            nextNode[0] = box.get_bl()
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[1] = current[1] + math.pi / 2
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[0] = box.get_br()
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[1] = current[1] + math.pi / 2
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[0] = tuple(next)
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            return intermediate
+        if currentFace == 'r' and nextFace == 'l':
+            intermediate = []
+            nextNode = current.copy()
+            nextNode[0] = box.get_tr()
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[1] = current[1] + math.pi / 2
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[0] = box.get_tl()
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[1] = current[1] + math.pi / 2
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[0] = tuple(next)
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            return intermediate
+        if currentFace == 't' and nextFace == 'l':
+            intermediate = []
+            nextNode = current.copy()
+            nextNode[0] = box.get_tl()
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[1] = current[1] + math.pi / 2
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[0] = tuple(next)
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            return intermediate
+        if currentFace == 't' and nextFace == 'r':
+            intermediate = []
+            nextNode = current.copy()
+            nextNode[0] = box.get_tr()
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[1] = current[1] - math.pi / 2
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[0] = tuple(next)
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            return intermediate
+        if currentFace == 'b' and nextFace == 'r':
+            intermediate = []
+            nextNode = current.copy()
+            nextNode[0] = box.get_br()
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[1] = current[1] + math.pi / 2
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[0] = tuple(next)
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            return intermediate
+        if currentFace == 'b' and nextFace == 'l':
+            intermediate = []
+            nextNode = current.copy()
+            nextNode[0] = box.get_bl()
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[1] = current[1] - math.pi / 2
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[0] = tuple(next)
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            return intermediate
+        if currentFace == 'l' and nextFace == 't':
+            intermediate = []
+            nextNode = current.copy()
+            nextNode[0] = box.get_tl()
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[1] = current[1] - math.pi / 2
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[0] = tuple(next)
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            return intermediate
+        if currentFace == 'l' and nextFace == 'b':
+            intermediate = []
+            nextNode = current.copy()
+            nextNode[0] = box.get_bl()
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[1] = current[1] + math.pi / 2
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[0] = tuple(next)
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            return intermediate
+        if currentFace == 'r' and nextFace == 't':
+            intermediate = []
+            nextNode = current.copy()
+            nextNode[0] = box.get_tr()
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[1] = current[1] + math.pi / 2
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[0] = tuple(next)
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            return intermediate
+        if currentFace == 'r' and nextFace == 'b':
+            intermediate = []
+            nextNode = current.copy()
+            nextNode[0] = box.get_br()
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[1] = current[1] - math.pi / 2
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            current = nextNode.copy()
+            nextNode[0] = tuple(next)
+            intermediate.extend(self.interpolate(env, current, nextNode))
+            return intermediate
 
-                if pathPos == 1:    # Ignore intersection at starting vertex
-                    intersection = env.box_intersection(line, [Prism(env.boxes[0].width, env.boxes[0].height, path[-1][0])])
-
-                else:
-                    intersection = env.box_intersection(line, [Prism(env.boxes[0].width, env.boxes[0].height, path[-1][0]),
-                                                               Prism(env.boxes[0].width, env.boxes[0].height, path[0][0])])
-                if intersection is not None:
-                    print('INTERSECT: ', intersection)
-
-                # If we're a robot path,
-                # stop adding vertices and instead complete path using subroutine for angling to next position
-                if intersection is not None and path[vertex][1]:
-                    if deleteMode % 2:  # Delete after
-                        #
-                        # print("DELETING AFTER INTERSECT: ", intersection, vertex)
-
-                        if len(dummyPath) > 1:
-                            dummyPath = dummyPath[:vertex - 1]
-                        else:
-                            dummyPath = path[:vertex]
-                        dummyPath.append([intersection, 'MOVE'])
-                        deleteMode += 1
-
-                    else:               # Delete before
-                        # print("DELETING BEFORE INTERSECT ", intersection, vertex)
-                        # print("DUMMY PATH BEFORE: ", dummyPath)
-                        dummyPath = [[intersection, 'MOVE']] + path[vertex:]
-                        # print("DUMMY PATH AFTER: ", dummyPath)
-                        deleteMode += 1
-            # print('PRINTING PATH: ', dummyPath)
-            # cv2.waitKey(0)
-            for point in dummyPath:
-                cv2.imshow('environment', cv2.circle(canvas, utils.scale(point[0]), 3, [0, 0, 0], -1))
-            cv2.waitKey(0)
-            if len(dummyPath) > 1:
-                newPaths.append(dummyPath)
-            else:
-                newPaths.append(path)
-        dummy = []
-
-        # Reverse path segment
-        for vert in reversed(self.finalPath[-1]):
-            dummy.append(vert)
-            path = dummy
-        newPaths.append(path)
-        # print(self.finalPath)
-        # print(newPaths)
-        self.finalPath = newPaths
 
 
-    def extrapolate_path(self, env, path):
+    def add_corners(self, env, nextLine, curr):
 
-        for vertex in path:
-            vertex = [vertex[0], utils.vector_to_object(env.get_features(), vertex[0])]
-            vertex[1][1] = vertex[1][1] + math.pi / 2
-            self.timeseries.append(vertex)
+        pos = curr[0]
+        newGoal = None
 
-            pt1, pt2 = utils.robot_line(self.width, vertex)
-            cv2.imshow('environment', cv2.circle(cv2.line(env.canvas,
-                                                          (int(pt1[0] * 1000), int(pt1[1] * 1000)),
-                                                          (int(pt2[0] * 1000), int(pt2[1] * 1000)), [0, 0, 0], 2),
-                                                 (int(vertex[0][0] * 1000), int(vertex[0][1] * 1000)), 5, [0, 0, 0],
-                                                 -1))
-            cv2.waitKey(0)
+        nextLine = [np.round(nextLine[0], decimals=3), np.round(nextLine[1], decimals=3)]
+        # Obtain position from which to push box
+        box = Prism(env.boxes[0].width, env.boxes[0].height, nextLine[0])
 
-        #vis.animate_path(env.agent, env.canvas.copy(), path)
-        # cv2.imshow('environment', env.canvas)
-        # cv2.waitKey(0)
+        if pos[0] == box.get_tl()[0] and pos[0] == box.get_bl()[0]:
+            print('current pos is left')
+            fr = 'l'
+        elif pos[0] == box.get_tr()[0] and pos[0] == box.get_br()[0]:
+            print('current pos is right')
+            fr = 'r'
+        elif pos[1] == box.get_tl()[1] and pos[1] == box.get_tr()[1]:
+            print('current pos is top')
+            fr = 't'
+        else:
+            print('current pos is bottom')
+            fr = 'b'
+        if nextLine[0][0] == nextLine[1][0]:    # y direction
+            if nextLine[0][1] < nextLine[1][1]: # up
+                print('next pos is top')
+                to = 't'
+                newGoal = (nextLine[0][0], nextLine[0][1] - box.width / 2)
+            else:                               # down
+                to = 'b'
+                print('next pos is bottom')
+                newGoal = (nextLine[0][0], nextLine[0][1] + box.width / 2)
+        if nextLine[0][1] == nextLine[1][1]:    # x direction
+            if nextLine[0][0] > nextLine[1][0]: # right
+                to = 'r'
+                print('next pos is right')
+                newGoal = (nextLine[0][0] + box.width / 2, nextLine[0][1])
+            else:                               # left
+                to = 'l'
+                print('next pos is left')
+                newGoal = (nextLine[0][0] - box.width / 2, nextLine[0][1])
+        if newGoal is None:
 
+
+
+            print('curr ', curr)
+            print('newGoal ', newGoal)
+            print('nextLine ', nextLine)
+            print('nextLine ', nextLine)
+            print('currentLine ', [pos, box.centre])
+            #cv2.waitKey(0)
+        move = self.move(env, curr, fr, newGoal, to, box)
+        return move
+
+    def extrapolate_path(self, env, paths):
+        print("EXTRAPOLATING PATHS")
+
+        fullPath = []
+
+        for path in paths:
+            for vertex in path:
+                mode = vertex[1]
+                vertex = [vertex[0], utils.vector_to_object(env.get_features(), vertex[0])]
+                vertex[1][1] = vertex[1][1] + math.pi / 2
+
+                self.timeseries.append([vertex[0], vertex[1][1], mode])
+
+        # Add corners
+        for vertex in range(1, len(self.timeseries) - 2):
+            prev = self.timeseries[vertex - 1]
+            curr = self.timeseries[vertex]
+            next = self.timeseries[vertex + 1]
+            print(prev)
+            print(curr)
+            print(next)
+            print('')
+            #utils.plot_robot(env.canvas, self.width, prev)
+            #utils.plot_robot(env.canvas, self.width, curr)
+            fullPath.extend(self.interpolate(env, prev, curr))
+
+
+            try:
+                if curr[2] == 'MOVE':
+                    nextLine = [self.timeseries[vertex + 1][0], self.timeseries[vertex + 2][0]]
+                    extension = self.add_corners(env, nextLine, curr)
+                    self.timeseries[vertex:vertex] = extension
+            except:
+                print("dammit")
+
+        for config in fullPath:
+            utils.plot_robot(env.canvas.copy(), self.width, config)
 
 
 def box_intersect_path(paths, prism):

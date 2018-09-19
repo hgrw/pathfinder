@@ -47,12 +47,12 @@ def scale(point):
 
 
 def robot_line(width, vertex):
-    print(width, vertex)
-    print((vertex[0][0] - (width / 2) * math.cos(vertex[1][1]), vertex[0][1] - (width / 2) * math.sin(vertex[1][1])),
-           (vertex[0][0] + (width / 2) * math.cos(vertex[1][1]), vertex[0][1] + (width / 2) * math.sin(vertex[1][1])))
+    # print(width, vertex)
+    # print((vertex[0][0] - (width / 2) * math.cos(vertex[1][1]), vertex[0][1] - (width / 2) * math.sin(vertex[1][1])),
+    #        (vertex[0][0] + (width / 2) * math.cos(vertex[1][1]), vertex[0][1] + (width / 2) * math.sin(vertex[1][1])))
 
-    return (vertex[0][0] - (width / 2) * math.cos(vertex[1][1]), vertex[0][1] - (width / 2) * math.sin(vertex[1][1])), \
-           (vertex[0][0] + (width / 2) * math.cos(vertex[1][1]), vertex[0][1] + (width / 2) * math.sin(vertex[1][1]))
+    return (vertex[0][0] - (width / 2) * math.cos(vertex[1]), vertex[0][1] - (width / 2) * math.sin(vertex[1])), \
+           (vertex[0][0] + (width / 2) * math.cos(vertex[1]), vertex[0][1] + (width / 2) * math.sin(vertex[1]))
 
 
 def closest_point(p1, p2, p3):
@@ -66,6 +66,16 @@ def closest_point(p1, p2, p3):
         return p2
     else:
         return p1
+
+
+def plot_robot(canvas, width, configuration):
+    pt1, pt2 = robot_line(width, configuration)
+    cv2.imshow('environment',
+               cv2.circle(cv2.line(canvas,
+                                   scale(pt1),
+                                   scale(pt2), [0, 0, 0], 2),
+                          scale(configuration[0]), 5, [0, 0, 0], -1))
+    cv2.waitKey(1)
 
 
 def get_intersect(a1, a2, b1, b2):
@@ -125,13 +135,3 @@ def vector_to_object(objects, point):
 
     distances = [v[0] for v in vect]
     return vect[distances.index(min(distances))]
-
-    # # Get index of closest edge or corner
-    # minVect = vect.index(min(lineDist))
-    # minCorner = cornerDist.index(min(cornerDist))
-    #
-    # if cornerDist[minCorner] <= lineDist[minLine]:
-    #     direction = math.atan2(corners[minCorner][1] - point[1], corners[minCorner][0] - point[0])
-    #     return cornerDist[minCorner], direction
-    # else:
-    #     return lineDist[minLine], angle(edges[minLine])

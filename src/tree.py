@@ -13,15 +13,11 @@ class Node(object):
 
     def __init__(self, start, goal, cost):
         self.distance = math.hypot(goal[0] - start[0], goal[1] - start[1])
-        self.cost = cost
-        self.totalCost = self.distance + cost
         self.start = start  # Node position
         self.goal = goal    # Goal position
         self.id = id(self)  # Unique identifier for class instance
         self.children = []
-        self.root = None
-        self.theta = None
-        self.parent = None
+        self.parent = None  # Used to trace lineage from goal back to start
         self.done = False   # Only true for goal node
 
     def __iter__(self):
@@ -121,11 +117,22 @@ def generate_path(env, startNode, endNode, stepSize, clearance, plot=False, robo
     cleanCanvas = env.canvas.copy()
     env.update_canvas()
 
+    if robot:
+        env.numRobotPaths += 1
+
+        # Ensure that robot path starts at box edge
+        if env.numRobotPaths == 1:
+            endNode = (endNode[0] - env.boxes[0].width/2, endNode[1])
+        else:
+            endNode = (endNode[0] - env.boxes[0].width / 2, endNode[1])
+            startNode = (startNode[0] - env.boxes[0].width / 2, startNode[1])
+
     # Store euclidean distance heuristic in root node
     newTree = Node(startNode, endNode, 0)
     newTree.root = startNode
     env.add_tree(newTree)
     finalPoint = False
+    robotFinalPoint = True
 
     while True:
 
@@ -153,9 +160,15 @@ def generate_path(env, startNode, endNode, stepSize, clearance, plot=False, robo
                 newNode = generate_node(env, node, samplePoint, stepSize, clearance, startNode, endNode, finalPoint, robot)
 
                 if newNode is not None:
-                    newNode.theta = robot
-                    node.add_child(newNode)
-                    newNode.root = node.root
+
+                    if robot and env.box_collision_point(newNode.start):
+                        finalPoint = False
+                        break
+                    else:
+
+                        newNode.theta = robot
+                        node.add_child(newNode)
+                        newNode.root = node.root
 
                 if node.distance <= stepSize:
                     finalPoint = True

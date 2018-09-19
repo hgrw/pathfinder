@@ -29,11 +29,12 @@ def main(input, output, demo=False, debug=False):
 
     env = io.initialise_environment(input)
     env.update_boxes()
-    debug=False
+
 
     # Clearance parameters
     robotClearance = env.primitive
     boxClearance = env.boxes[0].width
+    #debug=False
 
     # Set stepsize as min(box width, static obstacle width)
     stepSize = env.boxes[0].width
@@ -110,11 +111,9 @@ def main(input, output, demo=False, debug=False):
 
     env.update_canvas()
 
-    # Add inputs and outputs for each path in agent paths!
-    env.agent.update_paths(env)
+    cv2.waitKey(0)
 
-    for path in env.agent.finalPath:
-        env.agent.timeseries.append(env.agent.extrapolate_path(env, path))
+    env.agent.extrapolate_path(env, env.agent.finalPath)
 
     env.update_canvas()
     cv2.imshow('environment', env.canvas)
