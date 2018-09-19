@@ -101,6 +101,14 @@ class Env(object):
         self.coloursIndex %= 7
         return col
 
+    def get_object_index(self, centre):
+        for i, e in enumerate(self.boxes):
+            if e.centre == centre:
+                return i, 'box'
+        for i, e in enumerate(self.obstacles):
+            if e.centre == centre:
+                return i, 'obs'
+        return -1
 
     def add_box(self, box):
         self.boxes.append(box)
@@ -188,14 +196,6 @@ class Env(object):
                 intersect.append(utils.get_intersect(box.get_tr(), box.get_br(), line[0], line[1]))
                 intersect.append(utils.get_intersect(box.get_br(), box.get_bl(), line[0], line[1]))
                 intersect.append(utils.get_intersect(box.get_bl(), box.get_tl(), line[0], line[1]))
-
-        # for box in self.obstacles:
-        #     if box.collides_with_line(line[0], line[1]):
-        #         print(line[0], line[1])
-        #         intersect.append(utils.get_intersect(box.get_tl(), box.get_tr(), line[0], line[1]))
-        #         intersect.append(utils.get_intersect(box.get_tr(), box.get_br(), line[0], line[1]))
-        #         intersect.append(utils.get_intersect(box.get_br(), box.get_bl(), line[0], line[1]))
-        #         intersect.append(utils.get_intersect(box.get_bl(), box.get_tl(), line[0], line[1]))
 
         if len(intersect) > 1:
 

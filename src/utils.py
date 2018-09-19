@@ -48,11 +48,79 @@ def scale(point):
 
 def robot_line(width, vertex):
     # print(width, vertex)
+    # cv2.waitKey(0)
+    # print(width, vertex)
     # print((vertex[0][0] - (width / 2) * math.cos(vertex[1][1]), vertex[0][1] - (width / 2) * math.sin(vertex[1][1])),
     #        (vertex[0][0] + (width / 2) * math.cos(vertex[1][1]), vertex[0][1] + (width / 2) * math.sin(vertex[1][1])))
-
+    # cv2.waitKey(0)
     return (vertex[0][0] - (width / 2) * math.cos(vertex[1]), vertex[0][1] - (width / 2) * math.sin(vertex[1])), \
            (vertex[0][0] + (width / 2) * math.cos(vertex[1]), vertex[0][1] + (width / 2) * math.sin(vertex[1]))
+
+
+def get_orientation(p1, p2, p3):
+
+    default = [
+        False,  # 0 L
+        False,  # 1 LD
+        False,  # 2 D
+        False,  # 3 RD
+        False,  # 4 R
+        False,  # 5 RU
+        False,  # 6 U
+        False  # 7 LU
+    ]
+
+    currentLine = default.copy()
+    nextLine = default.copy()
+
+    if p1[0] == p2[0]:
+        if p1[1] <= p2[1]:          # U
+            currentLine[6] = True
+        else:                       # D
+            currentLine[2] = True
+    elif p1[1] == p2[1]:
+        if p1[0] <= p2[0]:          # L
+            currentLine[0] = True
+        else:                       # R
+            currentLine[4] = True
+    else:
+        print("orientation error!")
+        print(p1, p2, p3)
+        cv2.waitKey(0)
+        exit(0)
+
+    if p2[0] == p3[0]:
+        if p2[1] <= p3[1]:          # U
+            nextLine[6] = True
+        else:                       # D
+            nextLine[2] = True
+    elif p2[1] == p3[1]:
+        if p2[0] <= p3[0]:          # L
+            nextLine[0] = True
+        else:                       # R
+            nextLine[4] = True
+    else:
+        print("orientation error!")
+        print(p1, p2, p3)
+        cv2.waitKey(0)
+        exit(0)
+
+    return currentLine, nextLine
+
+
+def update_point(point, orientation, distance):
+
+    if orientation[0]: # right
+        return (point[0] + distance, point[1])
+
+    if orientation[2]: # down
+        return (point[0], point[1] - distance)
+
+    if orientation[4]: # left
+        return (point[0] - distance, point[1])
+
+    if orientation[6]: # up
+        return (point[0], point[1] + distance)
 
 
 def closest_point(p1, p2, p3):

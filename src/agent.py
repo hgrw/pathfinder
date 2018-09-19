@@ -96,8 +96,7 @@ class Agent(object):
     def extrapolate_path(self, env, paths):
         print("EXTRAPOLATING PATHS")
         canvas = env.canvas.copy()
-        fullPath = []
-        pathTracking = [] # Goddamit. Have to track paths so that intersecting obstacle doesn't confound edge adder!!
+        pathTracking = [] # Goddamit. Have to track paths so that intersecting obstacle doesn't confound corner adder!!
 
         for path in paths:
             pathTracking.append(True)   # True for start of path
@@ -127,9 +126,9 @@ class Agent(object):
                 print(curr)
                 print(next)
                 print('')
-                utils.plot_robot(env.canvas, self.width, prev, [255, 0, 0])
-                utils.plot_robot(env.canvas, self.width, next, [0, 0, 255])
-                utils.plot_robot(env.canvas, self.width, curr, [0, 255, 0])
+                # utils.plot_robot(env.canvas, self.width, prev, [255, 0, 0])
+                # utils.plot_robot(env.canvas, self.width, next, [0, 0, 255])
+                # utils.plot_robot(env.canvas, self.width, curr, [0, 255, 0])
 
                 if vertex < 2:
                     pathCheck = True
@@ -180,9 +179,72 @@ class Agent(object):
                 skipVerts = vertex
         print("done adding corners")
         env.canvas = canvas
-        for vertex in self.timeseries:
-            cv2.waitKey(0)
-            utils.plot_robot(env.canvas, self.width, vertex, [0, 0, 0])
+        fullPath = []
+
+
+        # Remove paths from environment
+        for box in env.boxes:
+            box.path = None
+        for box in env.obstacles:
+            box.path = None
+
+        for vertex in range(1, len(self.timeseries) - 1):
+            prev = self.timeseries[vertex - 1]
+            curr = self.timeseries[vertex]
+            next = self.timeseries[vertex + 1]
+            print("prev: ", prev)
+            print("curr: ", curr)
+            print("next: ", next)
+
+            # Get current and next orientation for each line segment
+            currOrientation, nextOrientation = utils.get_orientation(prev[0], curr[0], next[0])
+
+            if vertex == 1:
+                globalOrientation = currOrientation
+
+            #utils.plot_robot(env.canvas, self.width, curr, [0, 0, 0])
+            # cv2.waitKey(0)
+            fullPath.extend(self.interpolate(env, prev, curr))
+
+            if not next[2]: # Push mode engage
+
+                # Shift line segment by global orientation
+                curr[0] = utils.update_point(curr[0], globalOrientation, env.boxes[0].width / 2)
+                next[0] = utils.update_point(next[0], globalOrientation, env.boxes[0].width / 2)
+
+                nextVect = self.interpolate(env, curr, next)
+                print("GOING FROM: ", nextVect[0][0], "  TO: ", nextVect[-1][0])
+                cv2.waitKey(0)
+                for config in range(1, len(nextVect) - 1):
+
+                    # Separate primitives
+                    prevConfig = nextVect[config - 1]
+                    currConfig = nextVect[config]
+                    nextConfig = nextVect[config + 1]
+
+                    # Get orientation of next primitive
+                    currOrientation, nextOrientation = utils.get_orientation(prevConfig[0], currConfig[0], nextConfig[0])
+
+                    try:
+                        boxIndex, boxType = env.get_object_index(env.box_collision_point(currConfig[0], getBox=True))
+                    except:
+                        print(nextVect, config, nextVect[config])
+                        cv2.waitKey(0)
+                        exit(0)
+
+                    # Find which box we're pushing
+                    boxIndex, boxType = env.get_object_index(env.box_collision_point(currConfig[0], getBox=True))
+                    print("from: ", prevConfig[0], " to: ", currConfig[0], ' next: ', nextConfig[0])
+                    if boxType == 'obs':
+                        env.obstacles[boxIndex].centre = currConfig[0]
+
+                    env.update_canvas()
+                    fullPath.extend(self.interpolate(env, nextVect[config - 1], nextVect[config]))
+
+                    #cv2.imshow('environment', env.canvas)
+                    utils.plot_robot(env.canvas, self.width, nextVect[config], [0, 0, 0])
+
+
 
         for config in fullPath:
             utils.plot_robot(env.canvas.copy(), self.width, config, [0, 0, 0])
