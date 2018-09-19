@@ -165,7 +165,6 @@ def generate_path(env, startNode, endNode, stepSize, clearance, plot=False, robo
                         finalPoint = False
                         break
                     else:
-
                         newNode.theta = robot
                         node.add_child(newNode)
                         newNode.root = node.root

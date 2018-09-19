@@ -162,6 +162,22 @@ class Env(object):
                     return True
         return False
 
+    def get_proximal_freedom(self, point):
+        w = self.boxes[0].height / 2
+        h = self.boxes[0].height / 2
+        x = point[0]
+        y = point[1]
+        return [
+            self.box_collision_point((x - w, y)),       # L
+            self.box_collision_point((x - w, y + h)),   # LD
+            self.box_collision_point((x, y + h)),       # D
+            self.box_collision_point((x + w, y + h)),   # RD
+            self.box_collision_point((x + w, y)),       # R
+            self.box_collision_point((x + w, y - h)),   # RU
+            self.box_collision_point((x, y - h)),       # U
+            self.box_collision_point((x - w, y - h)),   # LU
+        ]
+
     def box_intersection(self, line, boxes):
 
         intersect = []
@@ -345,6 +361,7 @@ class Moving(Prism):
         self.end = None
         self.sideLength = side
         self.path = None
+        self.proximal = None
 
     def add_path(self, path):
         self.path = path

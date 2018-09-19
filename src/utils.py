@@ -68,13 +68,13 @@ def closest_point(p1, p2, p3):
         return p1
 
 
-def plot_robot(canvas, width, configuration):
+def plot_robot(canvas, width, configuration, colour):
     pt1, pt2 = robot_line(width, configuration)
     cv2.imshow('environment',
                cv2.circle(cv2.line(canvas,
                                    scale(pt1),
-                                   scale(pt2), [0, 0, 0], 2),
-                          scale(configuration[0]), 5, [0, 0, 0], -1))
+                                   scale(pt2), colour, 2),
+                          scale(configuration[0]), 5, colour, -1))
     cv2.waitKey(1)
 
 
@@ -94,6 +94,120 @@ def get_intersect(a1, a2, b1, b2):
     if z == 0:                          # lines are parallel
         return None
     return (x/z, y/z)
+
+
+def add_corners(box, curr, currentFace, nextFace, newGoal):
+
+    default = [
+        False,  # 0 L
+        False,  # 1 LD
+        False,  # 2 D
+        False,  # 3 RD
+        False,  # 4 R
+        False,  # 5 RU
+        False,  # 6 U
+        False  # 7 LU
+    ]
+    if sum(currentFace) > 1 or sum(nextFace) > 1:
+        print("CURRENT FACE OR NEXT FACE ERROR! ", sum(currentFace), sum(nextFace))
+        exit(0)
+    elif currentFace.index(True) == nextFace.index(True):    # Current face == next face!
+        print("current face == next face")
+        return None, 0
+    elif currentFace.index(True) == 0:      # Currently on left face
+        if nextFace.index(True) == 2:
+            return [[box.get_bl(), curr[1], curr[2]],               # Go down
+                    [box.get_bl(), curr[1] + math.pi / 2, curr[2]], # Change angle
+                    [newGoal, curr[1] + math.pi / 2, curr[2]]], 3   # End at bottom face
+        elif nextFace.index(True) == 4:
+            return [[box.get_bl(), curr[1], curr[2]],               # Go down
+                    [box.get_bl(), curr[1] + math.pi / 2, curr[2]], # Change angle
+                    [box.get_br(), curr[1] + math.pi / 2, curr[2]], # Go right
+                    [box.get_br(), curr[1] + math.pi, curr[2]],     # Change angle
+                    [newGoal, curr[1] + math.pi, curr[2]]], 5       # End on right face
+        elif nextFace.index(True) == 6:     # Go up, right
+            return [[box.get_tl(), curr[1], curr[2]],               # Go up
+                    [box.get_tl(), curr[1] - math.pi / 2, curr[2]], # Change angle
+                    [newGoal, curr[1] - math.pi / 2, curr[2]]], 3   # End at top face
+        else:
+            print("!!!!!!!!!!!!!!!!!!!!!!Next Face error (lays on corner)")
+            print(currentFace.index(True))
+            print(nextFace.index(True))
+            print()
+            cv2.waitKey(0)
+            exit(0)
+    elif currentFace.index(True) == 2:      # Currently on down face
+        if nextFace.index(True) == 0:
+            return [[box.get_bl(), curr[1], curr[2]],               # Go left
+                    [box.get_bl(), curr[1] - math.pi / 2, curr[2]], # Change angle
+                    [newGoal, curr[1] - math.pi / 2, curr[2]]], 3   # End at left face
+        elif nextFace.index(True) == 6:
+            return [[box.get_bl(), curr[1], curr[2]],               # Go left
+                    [box.get_bl(), curr[1] - math.pi / 2, curr[2]], # Change angle
+                    [box.get_tl(), curr[1] - math.pi / 2, curr[2]], # Go up
+                    [box.get_tl(), curr[1] - math.pi, curr[2]],     # Change angle
+                    [newGoal, curr[1] + math.pi, curr[2]]], 5       # End at top face
+        elif nextFace.index(True) == 4:     # Go up
+            return [[box.get_br(), curr[1], curr[2]],               # Go right
+                    [box.get_br(), curr[1] + math.pi / 2, curr[2]], # Change angle
+                    [newGoal, curr[1] + math.pi / 2, curr[2]]], 3   # End at right face
+        else:
+            print("!!!!!!!!!!!!!!!!!!Next Face error (lays on corner)")
+            print(currentFace.index(True))
+            print(nextFace.index(True))
+            print()
+            cv2.waitKey(0)
+            exit(0)
+
+    elif currentFace.index(True) == 4:      # Currently on right face
+        if nextFace.index(True) == 2:
+            return [[box.get_br(), curr[1], curr[2]],               # Go down
+                    [box.get_br(), curr[1] - math.pi / 2, curr[2]], # Change angle
+                    [newGoal, curr[1] - math.pi / 2, curr[2]]], 3   # End at bottom face
+        elif nextFace.index(True) == 0:
+            return [[box.get_tr(), curr[1], curr[2]],               # Go up
+                    [box.get_tr(), curr[1] + math.pi / 2, curr[2]], # Change angle
+                    [box.get_tl(), curr[1] + math.pi / 2, curr[2]], # Go left
+                    [box.get_tl(), curr[1] + math.pi, curr[2]],     # Change angle
+                    [newGoal, curr[1] + math.pi, curr[2]]], 5       # End at left face
+        elif nextFace.index(True) == 6:     # Go up
+            return [[box.get_tr(), curr[1], curr[2]],               # Go up
+                    [box.get_tr(), curr[1] + math.pi / 2, curr[2]], # Change angle
+                    [newGoal, curr[1] + math.pi / 2, curr[2]]], 3   # End at top face
+        else:
+            print("!!!!!!!!!!!!!!!!!!!!!!!!Next Face error (lays on corner)")
+            print(currentFace.index(True))
+            print(nextFace.index(True))
+            print()
+            cv2.waitKey(0)
+            exit(0)
+
+    elif currentFace.index(True) == 6:      # Currently on top face
+        if nextFace.index(True) == 0:
+            return [[box.get_tl(), curr[1], curr[2]],               # Go left
+                    [box.get_tl(), curr[1] + math.pi / 2, curr[2]], # Change angle
+                    [newGoal, curr[1] + math.pi / 2, curr[2]]], 3   # End at left face
+        elif nextFace.index(True) == 2:
+            return [[box.get_tl(), curr[1], curr[2]],               # Go left
+                    [box.get_tl(), curr[1] + math.pi / 2, curr[2]], # Change angle
+                    [box.get_bl(), curr[1] + math.pi / 2, curr[2]], # Go down
+                    [box.get_bl(), curr[1] + math.pi, curr[2]],     # Change angle
+                    [newGoal, curr[1] + math.pi, curr[2]]], 5       # End at bottom face
+        elif nextFace.index(True) == 4:     # Go up
+            return [[box.get_tr(), curr[1], curr[2]],               # Go right
+                    [box.get_tr(), curr[1] - math.pi / 2, curr[2]], # Change angle
+                    [newGoal, curr[1] - math.pi / 2, curr[2]]], 3   # End at right face
+        else:
+            print("!!!!!!!!!!!!!!!!!!!!!Next Face error (lays on corner)")
+            print(currentFace.index(True))
+            print(nextFace.index(True))
+            print()
+            cv2.waitKey(0)
+            exit(0)
+
+    else:
+        print('FACE TRANSLATION ERROR! exiting')
+        exit(0)
 
 
 def vector_to_object(objects, point):
