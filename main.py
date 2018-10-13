@@ -34,10 +34,10 @@ def main(input, output, demo=False, debug=False):
     # Clearance parameters
     robotClearance = env.primitive
     boxClearance = env.boxes[0].width
-    debug=False
+    #debug=False
 
     # Set stepsize as min(box width, static obstacle width)
-    stepSize = env.boxes[0].width
+    stepSize = 0.005
 
     # 1. Generate paths for each box, ignoring movable obstacles and other movable boxes.
     for box in range(0, len(env.boxes)):

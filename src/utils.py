@@ -74,15 +74,15 @@ def get_orientation(p1, p2, p3):
     nextLine = default.copy()
 
     if p1[0] == p2[0]:
-        if p1[1] <= p2[1]:          # U
-            currentLine[6] = True
-        else:                       # D
+        if p1[1] <= p2[1]:          # D
             currentLine[2] = True
+        else:                       # U
+            currentLine[6] = True
     elif p1[1] == p2[1]:
-        if p1[0] <= p2[0]:          # L
-            currentLine[0] = True
-        else:                       # R
+        if p1[0] <= p2[0]:          # R
             currentLine[4] = True
+        else:                       # L
+            currentLine[0] = True
     else:
         print("orientation error!")
         print(p1, p2, p3)
@@ -90,36 +90,42 @@ def get_orientation(p1, p2, p3):
         exit(0)
 
     if p2[0] == p3[0]:
-        if p2[1] <= p3[1]:          # U
-            nextLine[6] = True
-        else:                       # D
+        if p2[1] <= p3[1]:          # D
             nextLine[2] = True
+        else:                       # U
+            nextLine[6] = True
     elif p2[1] == p3[1]:
-        if p2[0] <= p3[0]:          # L
-            nextLine[0] = True
-        else:                       # R
+        if p2[0] <= p3[0]:          # R
             nextLine[4] = True
+        else:                       # L
+            nextLine[0] = True
     else:
         print("orientation error!")
         print(p1, p2, p3)
         cv2.waitKey(0)
         exit(0)
+    # print('Got orientation of')
+    # print('p1 ', p1)
+    # print('p2 ', p2)
+    # print('p3 ', p3)
+    # print(currentLine)
+    # print(nextLine)
 
     return currentLine, nextLine
 
 
 def update_point(point, orientation, distance):
 
-    if orientation[0]: # right
+    if orientation[0]: # RIGHT
         return (point[0] + distance, point[1])
 
-    if orientation[2]: # down
+    if orientation[2]: # UP
         return (point[0], point[1] - distance)
 
-    if orientation[4]: # left
+    if orientation[4]: # LEFT
         return (point[0] - distance, point[1])
 
-    if orientation[6]: # up
+    if orientation[6]: # DOWN
         return (point[0], point[1] + distance)
 
 
@@ -176,6 +182,11 @@ def add_corners(box, curr, currentFace, nextFace, newGoal):
         False,  # 6 U
         False  # 7 LU
     ]
+
+    # print('curr ', curr)
+    # print('currentFace ', currentFace)
+    # print('nextFace, ', nextFace)
+    # print('newGoal ', newGoal)
     if sum(currentFace) > 1 or sum(nextFace) > 1:
         print("CURRENT FACE OR NEXT FACE ERROR! ", sum(currentFace), sum(nextFace))
         exit(0)

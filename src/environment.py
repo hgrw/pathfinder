@@ -30,6 +30,15 @@ class Env(object):
         self.coloursIndex = 0
         self.numRobotPaths = 0
 
+    def get_box(self, boxIndex, boxType):
+        if boxType == 'obs':
+            return self.obstacles[boxIndex]
+        elif(boxType == 'box'):
+            return self.boxes[boxIndex]
+        else:
+            print("invalid box type: ", boxType)
+            exit(0)
+
     def update_boxes(self):
 
         for box in self.boxes:
@@ -333,6 +342,18 @@ class Prism(object):
 
     def get_br(self):
         return (self.centre[0] + self.width/2), (self.centre[1] + self.height/2)
+
+    def get_b(self):
+        return self.centre[0], (self.centre[1] + self.height/2)
+
+    def get_t(self):
+        return self.centre[0], (self.centre[1] - self.height/2)
+
+    def get_r(self):
+        return (self.centre[0] + self.width/2), self.centre[1]
+
+    def get_l(self):
+        return (self.centre[0] - self.width/2), self.centre[1]
 
     def collides_with_box(self, box):
         return abs(self.centre[0] - box.centre[0]) * 2 < (self.width + box.width) and \
